@@ -96,15 +96,15 @@ int main(int argc, char *argv[])
             insert.bind(1, r.text);
             insert.exec();
             known_images.push_back(hist);
-            response->write(SimpleWeb::StatusCode::success_created, "Image added to database");
+            response->write(SimpleWeb::StatusCode::success_created, json({{"success", true}, {"error", "none"}}).dump());
         }
         else
         {
-            response->write("Image already known", 409);
+            response->write(SimpleWeb::StatusCode::client_error_conflict, json({{"success", false}, {"error", "image_already_recognized"}}).dump());
         }
     };
 
-    server.resource["/check"]["POST"] = [&known_images](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
+    server.resource["/check"]["GET"] = [&known_images](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
     {
         json j = json::parse(request->content.string());
         cpr::Response r = cpr::Get(cpr::Url{j["url"].get<std::string>()});
