@@ -9,9 +9,10 @@ add_executable(imgdetector main.cpp)
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 option(CURL_ZLIB "use curl with zlib" OFF)
 
-# set(CPACK_PROJECT_NAME ${PROJECT_NAME})
-# set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
-# include(CPack)
+set(CPACK_PROJECT_NAME ${PROJECT_NAME})
+set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
+include(CPack)
+
 add_subdirectory(boost-cmake)
 target_link_libraries(imgdetector PUBLIC Boost::boost)
 target_link_libraries(imgdetector PUBLIC Boost::program_options)
