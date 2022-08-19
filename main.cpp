@@ -62,8 +62,8 @@ int main(int argc, char *argv[])
     while (query.executeStep())
     {
         // get the image from the url
-        cpr::Response r = cpr::Get(cpr::Url{query.getColumn("url").getString()});
-        std::vector<char> image_data(r.text.begin(), r.text.end());
+        std::string rawimg = query.getColumn("rawimg").getString();
+        std::vector<char> image_data(rawimg.begin(), rawimg.end());
         cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
         cv::Mat hsv;
         cv::cvtColor(img, hsv, cv::COLOR_BGR2HSV);
@@ -71,6 +71,8 @@ int main(int argc, char *argv[])
         Hist hist = make_hist(hsv);
         known_images.push_back(hist);
     }
+
+    spdlog::info("Loaded {} known images", known_images.size());
 
     server.resource["/set_recognized"]["POST"] = [&known_images, &db](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
     {
@@ -90,10 +92,11 @@ int main(int argc, char *argv[])
         if (std::find(known_images.begin(), known_images.end(), hist) == known_images.end())
         {
             // if the histogram is not in the known_images vector, add it to the database
-            SQLite::Statement insert(db, "INSERT INTO images (url) VALUES (?)");
-            insert.bind(1, j["url"].get<std::string>());
+            SQLite::Statement insert(db, "INSERT INTO images (rawimg) VALUES (?)");
+            insert.bind(1, r.text);
             insert.exec();
             known_images.push_back(hist);
+            response->write(SimpleWeb::StatusCode::success_created, "Image added to database");
         }
         else
         {
