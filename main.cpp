@@ -52,10 +52,10 @@ int main(int argc, char *argv[])
     std::vector<Hist> known_images; // the known images are the ones we will check against in the /check endpoint
 
     SQLite::Database db("./db.sqlite");
-    db.exec("CREATE TABLE IF NOT EXISTS images (id INTEGER PRIMARY KEY, rawimg TEXT)");
+    db.exec("CREATE TABLE IF NOT EXISTS images (id INTEGER PRIMARY KEY, rawimg TEXT);");
 
     // get all the images from the database
-    SQLite::Statement query(db, "SELECT * FROM images");
+    SQLite::Statement query(db, "SELECT * FROM images;");
 
     while (query.executeStep())
     {
@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
         if (std::find(known_images.begin(), known_images.end(), hist) == known_images.end())
         {
             // if the histogram is not in the known_images vector, add it to the database
-            SQLite::Statement insert(db, "INSERT INTO images (rawimg) VALUES (?)");
+            SQLite::Statement insert(db, "INSERT INTO images (rawimg) VALUES (?);");
             insert.bind(1, r.text);
             insert.exec();
             known_images.push_back(hist);
