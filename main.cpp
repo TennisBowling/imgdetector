@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
     {
         // get the image from the url
         std::string rawimg = query.getColumn("rawimg").getString();
-        std::vector<char> image_data(rawimg.begin(), rawimg.end());
+        std::vector<unsigned char> image_data(rawimg.begin(), rawimg.end());
         cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
         cv::Mat hsv;
         cv::cvtColor(img, hsv, cv::COLOR_BGR2HSV);
@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
                                                                        {
         json j = json::parse(req.body);
         cpr::Response r = cpr::Get(cpr::Url{j["url"].get<std::string>()});
-        std::vector<char> image_data(r.text.begin(), r.text.end());
+        std::vector<unsigned char> image_data(r.text.begin(), r.text.end());
 
         // load raw image into opencv, convert to hsv, calculate histogram, and store the histogram in the known_images vector
         // do this for red, green, and blue
@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
                                                              {
         json j = json::parse(req.body);
         cpr::Response r = cpr::Get(cpr::Url{j["url"].get<std::string>()});
-        std::vector<char> image_data(r.text.begin(), r.text.end());
+        std::vector<unsigned char> image_data(r.text.begin(), r.text.end());
         cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
         cv::Mat hsv;
         cv::cvtColor(img, hsv, cv::COLOR_BGR2HSV);
