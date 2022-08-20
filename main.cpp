@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
     std::vector<Hist> known_images; // the known images are the ones we will check against in the /check endpoint
 
     SQLite::Database db("./db.sqlite");
-    db.exec("CREATE TABLE IF NOT EXISTS images (id INTEGER PRIMARY KEY, url TEXT)");
+    db.exec("CREATE TABLE IF NOT EXISTS images (id INTEGER PRIMARY KEY, rawimg TEXT)");
 
     // get all the images from the database
     SQLite::Statement query(db, "SELECT * FROM images");
