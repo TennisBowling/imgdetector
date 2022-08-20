@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0.0)
 
-# set(CMAKE_TOOLCHAIN_FILE "C:\\Users\\FASTS\\random\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake")
+set(CMAKE_TOOLCHAIN_FILE "C:\\Users\\FASTS\\random\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake")
 project(imgdetector VERSION 0.1.0)
 
 # include(CTest)
@@ -16,6 +16,12 @@ include(CPack)
 add_subdirectory(boost-cmake)
 target_link_libraries(imgdetector PUBLIC Boost::boost)
 target_link_libraries(imgdetector PUBLIC Boost::program_options)
+
+set(CROW_BUILD_EXAMPLES OFF)
+set(CROW_BUILD_TESTS OFF)
+set(CROW_INSTALL OFF)
+add_subdirectory(crow)
+target_link_libraries(imgdetector PRIVATE Crow::Crow)
 
 add_subdirectory(SQLiteCpp)
 target_link_libraries(imgdetector PUBLIC SQLiteCpp sqlite3)

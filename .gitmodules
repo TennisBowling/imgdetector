@@ -1,12 +1,12 @@
 [submodule "opencv"]
 	path = opencv
 	url = https://github.com/opencv/opencv.git
-[submodule "Simple-Web-Server"]
-	path = Simple-Web-Server
-	url = https://gitlab.com/eidheim/Simple-Web-Server.git
 [submodule "boost-cmake"]
 	path = boost-cmake
 	url = https://github.com/ClausKlein/boost-cmake.git
 [submodule "SQLiteCpp"]
 	path = SQLiteCpp
 	url = https://github.com/SRombauts/SQLiteCpp
+[submodule "crow"]
+	path = crow
+	url = https://github.com/tennisbowling/crow.git

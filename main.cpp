@@ -5,11 +5,10 @@
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
 #include <opencv2/opencv.hpp>
-#include "Simple-Web-Server/server_http.hpp"
+#include <crow.h>
 #include <SQLiteCpp/SQLiteCpp.h>
 
 using json = nlohmann::json;
-using HttpServer = SimpleWeb::Server<SimpleWeb::HTTP>;
 
 struct Hist
 {
@@ -48,8 +47,7 @@ int main(int argc, char *argv[])
 
     spdlog::set_pattern("[%Y-%m-%d %H:%M:%S] [%^%l%$] - %v"); // nice style that i like
 
-    HttpServer server;
-    server.config.port = 8000;
+    crow::SimpleApp app;
 
     std::vector<Hist> known_images; // the known images are the ones we will check against in the /check endpoint
 
@@ -74,9 +72,9 @@ int main(int argc, char *argv[])
 
     spdlog::info("Loaded {} known images", known_images.size());
 
-    server.resource["/set_recognized"]["POST"] = [&known_images, &db](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
-    {
-        json j = json::parse(request->content.string());
+    CROW_ROUTE(app, "/set_recognized").methods(crow::HTTPMethod::Post)([&known_images, &db](const crow::request &req)
+                                                                       {
+        json j = json::parse(req.body);
         cpr::Response r = cpr::Get(cpr::Url{j["url"].get<std::string>()});
         std::vector<char> image_data(r.text.begin(), r.text.end());
 
@@ -89,6 +87,8 @@ int main(int argc, char *argv[])
 
         Hist hist = make_hist(hsv);
 
+        crow::response res;
+
         if (std::find(known_images.begin(), known_images.end(), hist) == known_images.end())
         {
             // if the histogram is not in the known_images vector, add it to the database
@@ -96,23 +96,26 @@ int main(int argc, char *argv[])
             insert.bind(1, r.text);
             insert.exec();
             known_images.push_back(hist);
-            response->write(SimpleWeb::StatusCode::success_created, json({{"success", true}, {"error", "none"}}).dump());
+            res.code = 200;
+            res.body = json({{"success", true}, {"error", "none"}}).dump();
         }
         else
         {
-            response->write(SimpleWeb::StatusCode::client_error_conflict, json({{"success", false}, {"error", "image_already_recognized"}}).dump());
+            res.code = 409;
+            res.body = json({{"success", false}, {"error", "image_already_recognized"}}).dump();
         }
-    };
+        return res; });
 
-    server.resource["/check"]["GET"] = [&known_images](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
-    {
-        json j = json::parse(request->content.string());
+    CROW_ROUTE(app, "/check").methods(crow::HTTPMethod::Get)([&known_images](const crow::request &req)
+                                                             {
+        json j = json::parse(req.body);
         cpr::Response r = cpr::Get(cpr::Url{j["url"].get<std::string>()});
         std::vector<char> image_data(r.text.begin(), r.text.end());
         cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
         cv::Mat hsv;
         cv::cvtColor(img, hsv, cv::COLOR_BGR2HSV);
         Hist h = make_hist(hsv);
+        crow::response res;
         // now compare the histogram of the image to the known_images vector
 
         for (auto &i : known_images)
@@ -123,12 +126,14 @@ int main(int argc, char *argv[])
 
             if (red_dist < 0.25 && green_dist < 0.25 && blue_dist < 0.25)
             {
-                response->write(json({{"result", "match"}, {"distance", red_dist + green_dist + blue_dist}}).dump());
-                break;
+                res.code = 200;
+                res.body = json({{"result", "match"}, {"distance", red_dist + green_dist + blue_dist}}).dump();
+                return res;
             }
         }
-        response->write(json({{"result", "no match"}}).dump());
-    };
+        res.code = 200;
+        res.body = json({{"result", "no match"}}).dump();
+        return res; });
 
-    server.start();
+    app.bindaddr("0.0.0.0").port(8000).multithreaded().run();
 }
