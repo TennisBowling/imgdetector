@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0.0)
 
-set(CMAKE_TOOLCHAIN_FILE "C:\\Users\\FASTS\\random\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake")
+# set(CMAKE_TOOLCHAIN_FILE "C:\\Users\\FASTS\\random\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake")
 project(imgdetector VERSION 0.1.0)
 
 # include(CTest)
