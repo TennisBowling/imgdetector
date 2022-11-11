@@ -17,12 +17,6 @@ add_subdirectory(boost-cmake)
 target_link_libraries(imgdetector PUBLIC Boost::boost)
 target_link_libraries(imgdetector PUBLIC Boost::program_options)
 
-set(CROW_BUILD_EXAMPLES OFF)
-set(CROW_BUILD_TESTS OFF)
-set(CROW_INSTALL OFF)
-add_subdirectory(crow)
-target_link_libraries(imgdetector PRIVATE Crow::Crow)
-
 add_subdirectory(SQLiteCpp)
 target_link_libraries(imgdetector PUBLIC SQLiteCpp sqlite3)
 
