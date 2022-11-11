@@ -5,9 +5,9 @@
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
 #include <opencv2/opencv.hpp>
-#include <crow.h>
+#include "Simple-Web-Server/server_http.hpp"
 #include <SQLiteCpp/SQLiteCpp.h>
-
+using HttpServer = SimpleWeb::Server<SimpleWeb::HTTP>;
 using json = nlohmann::json;
 
 struct Hist
@@ -47,8 +47,9 @@ int main(int argc, char *argv[])
 
     spdlog::set_pattern("[%Y-%m-%d %H:%M:%S] [%^%l%$] - %v"); // nice style that i like
 
-    crow::SimpleApp app;
-
+    HttpServer server;
+    server.config.port = 8000;
+    server.config.address = "0.0.0.0";
     std::vector<Hist> known_images; // the known images are the ones we will check against in the /check endpoint
 
     SQLite::Database db("./db.sqlite", SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
@@ -72,9 +73,12 @@ int main(int argc, char *argv[])
 
     spdlog::info("Loaded {} known images", known_images.size());
 
-    CROW_ROUTE(app, "/set_recognized").methods(crow::HTTPMethod::Post)([&known_images, &db](const crow::request &req)
-                                                                       {
+    server.resource["/set_recognized"]["POST"] = [&router](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
+    {
         json j = json::parse(req.body);
+
+        spdlog::debug("Got request to set imgage {} as recognized", j["url"]);
+
         cpr::Response r = cpr::Get(cpr::Url{j["url"].get<std::string>()});
         std::vector<unsigned char> image_data(r.text.begin(), r.text.end());
 
@@ -83,11 +87,18 @@ int main(int argc, char *argv[])
         cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
 
         cv::Mat hsv;
-        cv::cvtColor(img, hsv, cv::COLOR_BGR2HSV);
+        try
+        {
+            cv::cvtColor(img, hsv, cv::COLOR_BGR2HSV);
+        }
+        catch (cv::Exception &e)
+        {
+            spdlog::error("Error converting image to hsv: {}", e.what());
+            response->write(SimpleWeb::StatusCode::client_error_bad_request, "Error converting image to hsv");
+            return;
+        }
 
         Hist hist = make_hist(hsv);
-
-        crow::response res;
 
         if (std::find(known_images.begin(), known_images.end(), hist) == known_images.end())
         {
@@ -96,26 +107,37 @@ int main(int argc, char *argv[])
             insert.bind(1, r.text);
             insert.exec();
             known_images.push_back(hist);
-            res.code = 200;
-            res.body = json({{"success", true}, {"error", "none"}}).dump();
+            response->write(SimpleWeb::StatusCode::success_ok, json({{"success", true}, {"error", "none"}}).dump());
         }
         else
         {
-            res.code = 409;
-            res.body = json({{"success", false}, {"error", "image_already_recognized"}}).dump();
+            response->write(SimpleWeb::StatusCode::success_ok, json({{"success", false}, {"error", "image_already_recognized"}}).dump());
         }
-        return res; });
+    };
 
-    CROW_ROUTE(app, "/check").methods(crow::HTTPMethod::Get)([&known_images](const crow::request &req)
-                                                             {
+    server.resource["/check"]["GET"] = [&router](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
+    {
         json j = json::parse(req.body);
+        spdlog::debug("Got check request for image url {}", j["url"]);
+
         cpr::Response r = cpr::Get(cpr::Url{j["url"].get<std::string>()});
         std::vector<unsigned char> image_data(r.text.begin(), r.text.end());
+
         cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
         cv::Mat hsv;
-        cv::cvtColor(img, hsv, cv::COLOR_BGR2HSV);
+
+        try
+        {
+            cv::cvtColor(img, hsv, cv::COLOR_BGR2HSV);
+        }
+        catch (cv::Exception &e)
+        {
+            spdlog::error("Error converting image to hsv: {}", e.what());
+            response->write(SimpleWeb::StatusCode::client_error_bad_request, "Error converting image to hsv");
+            return;
+        }
+
         Hist h = make_hist(hsv);
-        crow::response res;
         // now compare the histogram of the image to the known_images vector
 
         for (auto &i : known_images)
@@ -126,28 +148,24 @@ int main(int argc, char *argv[])
 
             if (red_dist < 0.25 && green_dist < 0.25 && blue_dist < 0.25)
             {
-                res.code = 200;
-                res.body = json({{"result", "match"}, {"distance", red_dist + green_dist + blue_dist}}).dump();
-                return res;
+                response->write(SimpleWeb::StatusCode::success_ok, json({{"result", "match"}, {"distance", red_dist + green_dist + blue_dist}}).dump());
             }
         }
-        res.code = 200;
-        res.body = json({{"result", "no match"}}).dump();
-        return res; });
+        response->write(SimpleWeb::StatusCode::success_ok, json({{"result", "no match"}}).dump());
+    };
 
-    CROW_ROUTE(app, "/get_recognized").methods(crow::HttpMethod::Get)([&known_images](const crow::request &req)
-                                                                     {
-        crow::response res;
-        res.code = 200;
+    server.resource["/get_recognized"]["GET"] = [&router](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
+    {
         // send the known_images vector to the client
+        spdlog::debug("sending known images to client, size: {}", known_images.size());
         json j;
         for (auto &i : known_images)
         {
             j.push_back(i);
         }
-        res.body = j.dump();
-        return res
-        });
+        response->write(SimpleWeb::StatusCode::success_ok, j.dump());
+    };
 
-    app.bindaddr("0.0.0.0").port(8000).multithreaded().run();
+    spdlog::info("Listening on {}:{}", server.config.address, server.config.port);
+    server.start();
 }
