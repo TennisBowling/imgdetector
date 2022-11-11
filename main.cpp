@@ -135,5 +135,19 @@ int main(int argc, char *argv[])
         res.body = json({{"result", "no match"}}).dump();
         return res; });
 
+    CROW_ROUTE(app, "/get_recognized").methods(crow::HttpMethod::Get)([&known_images](const crow::request &req)
+                                                                     {
+        crow::response res;
+        res.code = 200;
+        // send the known_images vector to the client
+        json j;
+        for (auto &i : known_images)
+        {
+            j.push_back(i);
+        }
+        res.body = j.dump();
+        return res
+        });
+
     app.bindaddr("0.0.0.0").port(8000).multithreaded().run();
 }
