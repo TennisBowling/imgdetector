@@ -166,7 +166,7 @@ int main(int argc, char *argv[])
         while (query.executeStep())
         {
             // get the image and push back to vector buffer
-            vector.push_back(query.getColumn("rawimg").getString());
+            imgbuffer.push_back(query.getColumn("rawimg").getString());
         }
 
         json j;
