@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
         response->write(SimpleWeb::StatusCode::success_ok, json({{"result", "no match"}}).dump());
     };
 
-    server.resource["/get_recognized"]["GET"] = [&known_images](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
+    server.resource["/get_recognized"]["GET"] = [&known_images, &db](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
     {
         // send the known_images vector to the client
         spdlog::debug("sending known images to client, size: {}", known_images.size());
