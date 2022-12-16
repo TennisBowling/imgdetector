@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
 
     while (query.executeStep())
     {
-        // get the image from the url
+        // get the image and load into the Hist struct and add to vector
         std::string rawimg = query.getColumn("rawimg").getString();
         std::vector<unsigned char> image_data(rawimg.begin(), rawimg.end());
         cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 
     spdlog::info("Loaded {} known images", known_images.size());
 
-    server.resource["/set_recognized"]["POST"] = [&known_images](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
+    server.resource["/set_recognized"]["POST"] = [&known_images, &db](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
     {
         json j = json::parse(request->content.string());
 
@@ -158,11 +158,19 @@ int main(int argc, char *argv[])
     {
         // send the known_images vector to the client
         spdlog::debug("sending known images to client, size: {}", known_images.size());
-        json j;
-        for (auto &i : known_images)
+
+        std::vector<std::string> imgbuffer;
+
+        SQLite::Statement query(db, "SELECT * FROM images;");
+
+        while (query.executeStep())
         {
-            j.push_back(i);
+            // get the image and push back to vector buffer
+            vector.push_back(query.getColumn("rawimg").getString());
         }
+
+        json j;
+        j["images"] = imgbuffer;
         response->write(SimpleWeb::StatusCode::success_ok, j.dump());
     };
 
