@@ -73,9 +73,9 @@ int main(int argc, char *argv[])
 
     spdlog::info("Loaded {} known images", known_images.size());
 
-    server.resource["/set_recognized"]["POST"] = [&router](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
+    server.resource["/set_recognized"]["POST"] = [&known_images](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
     {
-        json j = json::parse(req.body);
+        json j = json::parse(request->content.string());
 
         spdlog::debug("Got request to set imgage {} as recognized", j["url"]);
 
@@ -115,9 +115,9 @@ int main(int argc, char *argv[])
         }
     };
 
-    server.resource["/check"]["GET"] = [&router](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
+    server.resource["/check"]["GET"] = [&known_images](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
     {
-        json j = json::parse(req.body);
+        json j = json::parse(request->content.string());
         spdlog::debug("Got check request for image url {}", j["url"]);
 
         cpr::Response r = cpr::Get(cpr::Url{j["url"].get<std::string>()});
@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
         response->write(SimpleWeb::StatusCode::success_ok, json({{"result", "no match"}}).dump());
     };
 
-    server.resource["/get_recognized"]["GET"] = [&router](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
+    server.resource["/get_recognized"]["GET"] = [&known_images](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
     {
         // send the known_images vector to the client
         spdlog::debug("sending known images to client, size: {}", known_images.size());
